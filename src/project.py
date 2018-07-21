@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
     show_hog_sample(mpimg.imread('../training_images/vehicles/GTI_MiddleClose/image0002.png'))
 
-  
+
     color_space = 'YCrCb'  # Can be RGB, HSV, LUV, HLS, YUV, YCrCb
     orient = 9  # HOG orientations
     pix_per_cell = 8  # HOG pixels per cell
