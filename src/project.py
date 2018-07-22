@@ -1,11 +1,18 @@
 from functions import *
+import os.path
+import pickle
+from collections import deque
+
+heatmaps = deque(maxlen = 25) #You can choose how many frames to use.
+heatmap_threshold = 1
 
 def process_image(image):
-    global y_start_stop, svc, X_scaler, color_space, spatial_size, hist_bins, orient, pix_per_cell, cell_per_block, hog_channel, spatial_feat, hist_feat, hog_feat
+    global y_start_stop, svc, X_scaler, color_space, spatial_size, hist_bins, orient, pix_per_cell, cell_per_block, hog_channel, spatial_feat, hist_feat, hog_feat, heatmaps
     #image_copy = np.copy(image)
-    image_copy = image.astype(np.float32) / 255
-    draw_image = np.copy(image_copy)
+    #image_copy = image.astype(np.float32) / 255
+    #draw_image = np.copy(image_copy)
 
+    '''
     windows = average_slide_windows(image, x_start_stop=[None, None], y_start_stop=y_start_stop,
                            xy_window=(80, 80), xy_overlap=(0.8, 0.8))
 
@@ -15,16 +22,23 @@ def process_image(image):
                                   cell_per_block=cell_per_block,
                                   hog_channel=hog_channel, spatial_feat=spatial_feat,
                                   hist_feat=hist_feat, hog_feat=hog_feat)
+    '''
 
+    window_img, hot_windows = find_cars(image, y_start_stop[0], y_start_stop[1], 1.5, svc, X_scaler, orient, pix_per_cell,
+                                        cell_per_block, spatial_size, hist_bins)
 
     # hot_windows.append(np.concatenate((hot_windows1, hot_windows2), axis=0))
     # hot_windows = np.squeeze(hot_windows)
 
-    window_img = draw_boxes(draw_image, hot_windows, color=(0, 0, 255), thick=6)
+    #window_img = draw_boxes(draw_image, hot_windows, color=(0, 0, 255), thick=6)
 
     heat = np.zeros_like(window_img[:,:,0]).astype(np.float)
     heat = add_heat(heat,hot_windows)
-    heatmap = apply_threshold(heat,1)
+
+    heatmaps.append(heat)
+    combined = sum(heatmaps)/len(heatmaps)
+
+    heatmap = apply_threshold(combined,heatmap_threshold)
     labels = label(heatmap)
     result = draw_labeled_bboxes(np.copy(image), labels)
 
@@ -70,34 +84,52 @@ if __name__ == "__main__":
     xy_window = [64,64]
     x_start_stop = [760, 1260]
 
-    car_features, notcar_features = get_features(cars, notcars, color_space, orient, pix_per_cell, cell_per_block,
-                                                 hog_channel, spatial_size, hist_bins, spatial_feat,
-                                                 hist_feat, hog_feat)
-
-    svc = train_classifier(car_features, notcar_features, spatial_size, hist_bins)
-
+    filename1 = './standard_scaler.sav'
+    filename2 = './svc.sav'
     image = mpimg.imread('../test_images/test5.jpg')
-    image = image.astype(np.float32)/255
-    draw_image = np.copy(image)
 
-    X = np.vstack((car_features, notcar_features)).astype(np.float64)
-    X_scaler = StandardScaler().fit(X)
-    scaled_X = X_scaler.transform(X)
+    if not os.path.isfile(filename1) or not os.path.isfile(filename2):
+        car_features, notcar_features = get_features(cars, notcars, color_space, orient, pix_per_cell, cell_per_block,
+                                                     hog_channel, spatial_size, hist_bins, spatial_feat,
+                                                     hist_feat, hog_feat)
+        svc = train_classifier(car_features, notcar_features, spatial_size, hist_bins)
 
+        #image = image.astype(np.float32)/255
+        draw_image = np.copy(image)
+
+        X = np.vstack((car_features, notcar_features)).astype(np.float64)
+        model = StandardScaler()
+        X_scaler = model.fit(X)
+
+        pickle.dump(X_scaler, open(filename1, 'wb'))
+        pickle.dump(svc, open(filename2, 'wb'))
+
+        #scaled_X = X_scaler.transform(X)
+
+    else:
+        #X = np.vstack((car_features, notcar_features)).astype(np.float64)
+        X_scaler = pickle.load(open(filename1, 'rb'))
+        svc = pickle.load(open(filename2, 'rb'))
+        #scaled_X = X_scaler.transform(X)
+    '''
     windows = average_slide_windows(image, x_start_stop=[None, None], y_start_stop=y_start_stop,
                                     xy_window=(80, 80), xy_overlap=(0.8, 0.8))
-
+    
     hot_windows = search_windows(image, windows, svc, X_scaler, color_space=color_space,
                             spatial_size=spatial_size, hist_bins=hist_bins,
                             orient=orient, pix_per_cell=pix_per_cell,
                             cell_per_block=cell_per_block,
                             hog_channel=hog_channel, spatial_feat=spatial_feat,
                             hist_feat=hist_feat, hog_feat=hog_feat)
+    '''
+
+
+    window_img, hot_windows = find_cars(image, y_start_stop[0], y_start_stop[1], 1.5, svc, X_scaler, orient, pix_per_cell, cell_per_block, spatial_size, hist_bins)
 
     #Show heat map
-    show_heat_image(image, hot_windows)
+    #show_heat_image(image, hot_windows)
 
-    window_img = draw_boxes(draw_image, hot_windows, color=(110, 240, 41), thick=6)
+    #window_img = draw_boxes(draw_image, hot_windows, color=(110, 240, 41), thick=6)
 
     plt.imshow(window_img)
     plt.imsave("../output_images/test5.jpg", window_img)
@@ -105,9 +137,10 @@ if __name__ == "__main__":
     heat = np.zeros_like(image[:, :, 0]).astype(np.float)
     # Add heat to each box in box list
     heat = add_heat(heat, hot_windows)
-
+    heatmaps.append(heat)
+    combined = sum(heatmaps)/len(heatmaps)
     # Apply threshold to help remove false positives
-    heatmap = apply_threshold(heat, 1)
+    heatmap = apply_threshold(combined, heatmap_threshold)
 
     # Visualize the heatmap when displaying
     # heatmap = np.clip(heat, 0, 255)
@@ -116,13 +149,13 @@ if __name__ == "__main__":
     labels = label(heatmap)
     draw_img = draw_labeled_bboxes(np.copy(image), labels)
     plt.imshow(draw_img)
-    plt.imsave("../output_images/test5_heat.jpg", draw_img)
+    plt.imsave("../output_images/test5_final.jpg", draw_img)
 
 
 
     image = mpimg.imread('../test_images/test4.jpg')
     result = process_image(image)
-    plt.imshow(result)
+    plt.imsave("../output_images/test4_final.jpg", result)
 
     video_output = '../output_images/project_video.mp4'
     clip1 = VideoFileClip("../project_video.mp4", audio=False)
