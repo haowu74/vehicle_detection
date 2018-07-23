@@ -92,4 +92,10 @@ this is for just training detecting car, then how about pedestrian, bicycle, mot
 To be honest, this project shows us the traditional way to detect car. Yes now we know it is very slow, therefore very limited, in a hard way. Why not just learn Neural 
 Network approaches such as Yolo, Faster R-CNN, or SSD in the first place?   
   
-
+### Update for the second submit
+The following updates are included in the second submit:
+1. HOG subsampling is applied. Now the processing time for the project_video.mp4 is reduced from 8 hours to 20 min! That is amazing like a charm!
+2. Trained models are saved in files so won't bother train the model every time run the code.
+3. svc.decision_function(X) is used for optimising the detection
+4. Heat map is spanning frames. I use average heatmap by calculating 
+`sum(heatmaps)/len(heatmaps)`
