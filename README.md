@@ -99,3 +99,4 @@ The following updates are included in the second submit:
 3. svc.decision_function(X) is used for optimising the detection
 4. Heat map is spanning frames. I use average heatmap by calculating 
 `sum(heatmaps)/len(heatmaps)`
+5. The newly generated `project_video.mp4` is attached.
